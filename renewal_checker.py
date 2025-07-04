@@ -1,57 +1,63 @@
-# renewal_checker.py
-
 import pandas as pd
-from datetime import datetime
-from email_sender import send_email
+from datetime import datetime, timedelta
+from email_sender import send_email, send_summary
 
-# === Google Sheet (CSV Export Link) ===
-GOOGLE_SHEET_CSV = "https://docs.google.com/spreadsheets/d/17_HyRiUA3UMSt6uOOS_vTa29YbeCIuSCbP6XjsuUdg8/export?format=csv"
+# Your Google Sheet as CSV export link
+sheet_url = "https://docs.google.com/spreadsheets/d/17_HyRiUA3UMSt6uOOS_vTa29YbeCIuSCbP6XjsuUdg8/export?format=csv"
 
-def check_and_notify():
+# Load data
+df = pd.read_csv(sheet_url)
+
+# Current date
+today = datetime.today().date()
+
+# Track how many emails sent
+summary = {
+    "Expiring Soon": 0,
+    "Expired": 0
+}
+
+# Loop through each client
+for i, row in df.iterrows():
+    client = row["Client Name"]
+    service = row["Service Type"]
+    cycle = str(row["Renewal Cycle"]).strip().lower()
+    due_date_str = row["Renewal Due Date"]
+    status = row["Status"]
+    email = row["Contact Email"]
+
     try:
-        df = pd.read_csv(GOOGLE_SHEET_CSV)
-    except Exception as e:
-        print(f"❌ Failed to load Google Sheet: {e}")
-        return
+        due_date = pd.to_datetime(due_date_str).date()
+    except:
+        print(f"⚠️ Invalid date for {client}")
+        continue
 
-    today = datetime.today()
-    logs = []
-
-    for i, row in df.iterrows():
-        try:
-            client = row["Client Name"]
-            service = row["Service Type"]
-            email = row["Contact Email"]
-            due_date_str = row["Renewal Due Date"]
-            current_status = row["Status"]
-
-            if pd.isna(due_date_str) or pd.isna(email):
-                continue
-
-            due_date = pd.to_datetime(due_date_str)
-            days_left = (due_date - today).days
-
-            if days_left < 0:
-                new_status = "Expired"
-            elif days_left <= 30:
-                new_status = "Expiring Soon"
-            else:
-                new_status = "Active"
-
-            if new_status != current_status:
-                print(f"🔄 Updating status for {client}: {current_status} → {new_status}")
-                sent = send_email(client, service, due_date_str, new_status, email)
-                if sent:
-                    logs.append(f"{datetime.now()}, {client}, {email}, {new_status}")
-        except Exception as e:
-            print(f"⚠️ Skipped row {i} due to error: {e}")
-
-    if logs:
-        print("\n📝 Email log:")
-        for entry in logs:
-            print("•", entry)
+    # Determine new status
+    if due_date < today:
+        new_status = "Expired"
+    elif (due_date - today).days <= 30:
+        new_status = "Expiring Soon"
     else:
-        print("✅ No status updates. All clients are up-to-date.")
+        new_status = "Active"
 
-if __name__ == "__main__":
-    check_and_notify()
+    # If status has changed → send reminder
+    if new_status != status:
+        print(f"🔄 {client}: {status} → {new_status}")
+        sent = send_email(client, service, due_date_str, new_status, email)
+        if sent:
+            summary[new_status] += 1
+
+# Send summary to internal team
+total = summary["Expiring Soon"] + summary["Expired"]
+summary_text = (
+    f"📋 Daily Renewal Summary ({today}):\n"
+    f"🔸 Expiring Soon: {summary['Expiring Soon']}\n"
+    f"🔸 Expired: {summary['Expired']}\n"
+    f"📬 Total Reminders Sent: {total}"
+)
+
+# Optional: send to team email
+if total > 0:
+    send_summary(summary_text)
+else:
+    print("✅ No expiring/expired clients today.")
