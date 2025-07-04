@@ -20,7 +20,7 @@ st.markdown("""
         }
         .block-container {
             padding: 2rem;
-            background-color: #ffffff;
+            background-color: #373737;
             border-radius: 15px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
@@ -71,7 +71,7 @@ st.subheader("📋 Client Records")
 
 st.dataframe(
     filtered_df.style.set_properties(**{
-        'background-color': '#ffffff',
+        'background-color': '#ADD8E6',
         'color': '#2c3e50',
         'border-color': '#dfe6e9'
     }),
