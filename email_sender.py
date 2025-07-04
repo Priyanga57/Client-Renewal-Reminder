@@ -1,40 +1,35 @@
 import smtplib
 from email.mime.text import MIMEText
 
-# -------------------
-# 🔐 CONFIGURATION
-# -------------------
-EMAIL_SENDER = "your_email@gmail.com"           # Your Gmail ID
-EMAIL_PASSWORD = "your_app_password"            # Gmail App Password (not your regular password)
-TEAM_EMAIL = "your_team_email@example.com"      # Optional: Send internal summary to your team
+# 🔐 Gmail credentials
+EMAIL_SENDER = "priyangaa7512@gmail.com"
+EMAIL_PASSWORD = "pafx qkdp ivfi lcaj"
+TEAM_EMAIL = "priyangaa7512@gmail.com"
 
-
-# -------------------
-# ✉️ SEND REMINDER TO CLIENT
-# -------------------
+# ✉️ Client Reminder
 def send_email(client, service, due_date, status, to_email):
-    status_emoji = {
+    emoji = {
         "Active": "✅",
         "Expiring Soon": "⏳",
         "Expired": "❌"
     }.get(status, "📌")
 
-    subject = f"{status_emoji} Reminder: {service} Renewal for {client}"
+    subject = f"{emoji} Reminder: {service} for {client}"
     body = f"""\
 Hello {client}, 👋
 
-🔔 This is a friendly reminder from our team.
+🔔 This is a friendly reminder.
 
 🧾 Client: {client}  
 🛠️ Service: {service}  
-📅 Renewal Due Date: {due_date}  
-📌 Current Status: {status_emoji} {status}
+📅 Due Date: {due_date}  
+📌 Status: {emoji} {status}
 
-Please take action to renew if required.  
-This message was generated automatically by our system.
+Please take action if needed.  
+This is an automated message from our renewal system.
 
 Thanks,  
-Client Renewal Team 🤖
+Renewal Reminder Team 🤖
 """
 
     try:
@@ -51,30 +46,14 @@ Client Renewal Team 🤖
         return True
 
     except Exception as e:
-        print(f"❌ Failed to send email to {to_email}: {e}")
+        print(f"❌ Failed to send to {to_email}: {e}")
         return False
 
-
-# -------------------
-# 📬 OPTIONAL: SEND DAILY SUMMARY TO TEAM
-# -------------------
+# 📬 Daily Summary to Team
 def send_summary(summary_text):
-    subject = "📊 Daily Renewal Summary Report"
-    body = f"""\
-Hello Team, 👋
-
-Here's your automated summary for today:  
-
-{summary_text}
-
-💡 Tip: You can view all records on the Streamlit Dashboard.
-
-Best regards,  
-Renewal Reminder System 🤖
-"""
-
+    subject = "📊 Daily Client Renewal Summary"
     try:
-        msg = MIMEText(body)
+        msg = MIMEText(summary_text)
         msg["Subject"] = subject
         msg["From"] = EMAIL_SENDER
         msg["To"] = TEAM_EMAIL
@@ -83,9 +62,9 @@ Renewal Reminder System 🤖
             server.login(EMAIL_SENDER, EMAIL_PASSWORD)
             server.send_message(msg)
 
-        print(f"📨 Daily summary sent to team ({TEAM_EMAIL})")
+        print(f"📨 Summary sent to {TEAM_EMAIL}")
         return True
 
     except Exception as e:
-        print(f"❌ Failed to send summary email: {e}")
+        print(f"❌ Failed to send summary: {e}")
         return False
