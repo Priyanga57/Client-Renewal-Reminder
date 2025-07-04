@@ -1,35 +1,33 @@
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from email_sender import send_email, send_summary
 
-# Your Google Sheet as CSV export link
+# 📄 Link to your Google Sheet (CSV export format)
 sheet_url = "https://docs.google.com/spreadsheets/d/17_HyRiUA3UMSt6uOOS_vTa29YbeCIuSCbP6XjsuUdg8/export?format=csv"
 
-# Load data
+# 📥 Load the sheet
 df = pd.read_csv(sheet_url)
 
-# Current date
 today = datetime.today().date()
 
-# Track how many emails sent
+# Summary tracking
 summary = {
-    "Expiring Soon": 0,
-    "Expired": 0
+    "Expiring Soon": [],
+    "Expired": []
 }
 
-# Loop through each client
+# 🔁 Process each row
 for i, row in df.iterrows():
     client = row["Client Name"]
     service = row["Service Type"]
-    cycle = str(row["Renewal Cycle"]).strip().lower()
-    due_date_str = row["Renewal Due Date"]
-    status = row["Status"]
+    due_date_str = str(row["Renewal Due Date"]).strip()
+    status = str(row["Status"]).strip()
     email = row["Contact Email"]
 
     try:
         due_date = pd.to_datetime(due_date_str).date()
-    except:
-        print(f"⚠️ Invalid date for {client}")
+    except Exception as e:
+        print(f"❌ Invalid date for {client}: {due_date_str}")
         continue
 
     # Determine new status
@@ -40,24 +38,29 @@ for i, row in df.iterrows():
     else:
         new_status = "Active"
 
-    # If status has changed → send reminder
-    if new_status != status:
+    # 📬 If status changed, send email
+    if new_status != status and new_status in ["Expiring Soon", "Expired"]:
         print(f"🔄 {client}: {status} → {new_status}")
-        sent = send_email(client, service, due_date_str, new_status, email)
+        sent = send_email(client, service, due_date.strftime("%Y-%m-%d"), new_status, email)
         if sent:
-            summary[new_status] += 1
+            summary[new_status].append(f"- {client} ({service}) – Due: {due_date.strftime('%Y-%m-%d')}")
 
-# Send summary to internal team
-total = summary["Expiring Soon"] + summary["Expired"]
-summary_text = (
-    f"📋 Daily Renewal Summary ({today}):\n"
-    f"🔸 Expiring Soon: {summary['Expiring Soon']}\n"
-    f"🔸 Expired: {summary['Expired']}\n"
-    f"📬 Total Reminders Sent: {total}"
-)
+# 📨 Prepare and send daily summary to team
+expiring_count = len(summary["Expiring Soon"])
+expired_count = len(summary["Expired"])
+total = expiring_count + expired_count
 
-# Optional: send to team email
 if total > 0:
+    summary_text = f"""📋 Daily Renewal Summary ({today})\n
+🔸 Expiring Soon: {expiring_count}
+{chr(10).join(summary['Expiring Soon']) if expiring_count > 0 else "None"}
+
+🔸 Expired: {expired_count}
+{chr(10).join(summary['Expired']) if expired_count > 0 else "None"}
+
+📬 Total Reminders Sent: {total}
+🔁 Visit your dashboard to manage renewals.
+"""
     send_summary(summary_text)
 else:
-    print("✅ No expiring/expired clients today.")
+    print("✅ No reminders sent today.")
