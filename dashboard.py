@@ -16,11 +16,11 @@ except Exception as e:
 st.markdown("""
     <style>
         body {
-            background-color: #212942;
+            background-color:#191970;
         }
         .block-container {
-            padding: 2rem;
-            background-color: #191970;
+            padding: 2rem; 
+            background-color: #212942 ;
             border-radius: 15px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
