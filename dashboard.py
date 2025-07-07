@@ -12,11 +12,11 @@ st.set_page_config(page_title="📊 Client Renewal Dashboard", layout="wide")
 st.markdown("""
     <style>
     body {
-        background-color: #f4f7f9;
+        background-color: #191970;
     }
     .block-container {
         padding: 2rem 2rem 2rem 2rem;
-        background-color: #191970 ;
+        background-color: #212942 ;
         border-radius: 15px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
