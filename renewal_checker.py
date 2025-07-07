@@ -2,77 +2,75 @@ import pandas as pd
 from datetime import datetime
 from email_sender import send_email, send_summary
 
-# 🔗 Google Sheet link (as CSV)
+# Google Sheet CSV Export Link
 sheet_url = "https://docs.google.com/spreadsheets/d/17_HyRiUA3UMSt6uOOS_vTa29YbeCIuSCbP6XjsuUdg8/export?format=csv"
 df = pd.read_csv(sheet_url)
 
-# 📅 Today’s date
 today = datetime.today().date()
 
-# 📦 Store reminders for daily summary
 summary = {
     "Expiring Soon": [],
-    "Expired": []
+    "Expired": [],
+    "Expiring Today": []
 }
 
-# 🔁 Loop through each row (client)
 for _, row in df.iterrows():
-    client = str(row.get("Client Name", "")).strip()
-    service = str(row.get("Service Type", "")).strip()
+    client = row.get("Client Name", "").strip()
+    service = row.get("Service Type", "").strip()
     due_date_str = str(row.get("Renewal Due Date", "")).strip()
     status = str(row.get("Status", "")).strip()
-    email = str(row.get("Contact Email", "")).strip()
-    is_onetime = str(row.get("Is Onetime Access", "No")).strip().lower()
+    email = row.get("Contact Email", "").strip()
+    is_onetime = str(row.get("Is Onetime Access", "")).strip().lower()
 
-    # 🚫 Skip one-time clients
-    if is_onetime == "yes":
+    # Skip onetime access
+    if is_onetime in ["yes", "true", "1"]:
         continue
 
-    # 🧠 Safely parse and check the due date
+    # Parse and validate due date
     try:
-        parsed = pd.to_datetime(due_date_str, errors="coerce")
-        if pd.isna(parsed):
-            continue
-        due_date = parsed.date()
-    except Exception:
-        continue  # skip if completely broken
-#One-time + AMC Reminder
-    # 🔍 Determine the current status
-    if due_date < today:
+        due_date = pd.to_datetime(due_date_str, errors="coerce").date()
+    except:
+        due_date = None
+
+    if pd.isna(due_date) or not due_date_str:
+        continue
+
+    # Determine new status
+    days_remaining = (due_date - today).days
+
+    if days_remaining < 0:
         new_status = "Expired"
-    elif (due_date - today).days <= 30:
+    elif days_remaining == 0:
+        new_status = "Expiring Today"
+    elif days_remaining <= 30:
         new_status = "Expiring Soon"
     else:
         new_status = "Active"
 
-    # 📤 Send reminder if status has changed and needs action
-    if new_status != status and new_status in ["Expiring Soon", "Expired"]:
-        print(f"🔔 {client} | {status} → {new_status}")
+    # Only send notification if new status is actionable
+    if new_status in ["Expired", "Expiring Soon", "Expiring Today"] and new_status != status:
+        print(f"🔔 {client}: {status} → {new_status}")
         sent = send_email(client, service, due_date.strftime("%Y-%m-%d"), new_status, email)
         if sent:
             summary[new_status].append(f"• {client} ({service}) – Due: {due_date.strftime('%Y-%m-%d')}")
 
-# 📧 Send daily summary to you (the manager)
-expiring_count = len(summary["Expiring Soon"])
-expired_count = len(summary["Expired"])
-total = expiring_count + expired_count
+# Send daily summary to admin
+total_reminders = len(summary["Expired"]) + len(summary["Expiring Soon"]) + len(summary["Expiring Today"])
 
-if total > 0:
-    report = f"""
-📅 **Daily Renewal Summary – {today.strftime('%Y-%m-%d')}** 📅
+if total_reminders > 0:
+    summary_text = f"""📬 Daily Renewal Summary ({today})
+    
+🔸 Expiring Today: {len(summary['Expiring Today'])}
+{chr(10).join(summary["Expiring Today"])}
 
-🔸 Expiring Soon: {expiring_count}
-{chr(10).join(summary["Expiring Soon"]) or 'None'}
+🔸 Expiring Soon (within 30 days): {len(summary['Expiring Soon'])}
+{chr(10).join(summary["Expiring Soon"])}
 
-🔴 Expired: {expired_count}
-{chr(10).join(summary["Expired"]) or 'None'}
+🔸 Expired: {len(summary['Expired'])}
+{chr(10).join(summary["Expired"])}
 
-📨 Total Reminders Sent: {total}
+Total Reminders Sent: {total_reminders}
 """
-    send_summary(report)
+    send_summary(summary_text)
 else:
     print("✅ No reminders sent today.")
-    
-with open("logs/daily_log.txt", "a") as log:
-    log.write(f"{datetime.now()} ✅ Ran successfully\n")
-
