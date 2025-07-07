@@ -16,7 +16,7 @@ st.markdown("""
     }
     .block-container {
         padding: 2rem 2rem 2rem 2rem;
-        background-color: #ffffff;
+        background-color: #191970 ;
         border-radius: 15px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
