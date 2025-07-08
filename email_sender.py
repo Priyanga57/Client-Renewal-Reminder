@@ -1,70 +1,70 @@
+# email_sender.py
+
 import smtplib
-from email.mime.text import MIMEText
+from email.message import EmailMessage
+from datetime import datetime
+import os
+from config import SENDER_EMAIL, APP_PASSWORD, SUMMARY_RECEIVER, LOG_FILE_PATH
 
-# 🔐 Gmail credentials
-EMAIL_SENDER = "priyangaa7512@gmail.com"
-EMAIL_PASSWORD = "pafx qkdp ivfi lcaj"
-TEAM_EMAIL = "priyangaa7512@gmail.com"
+# 📤 Send individual client email
+def send_email(client_name, service_type, due_date, status, contact_email):
+    try:
+        msg = EmailMessage()
+        msg['Subject'] = f"🔔 Renewal Reminder: {client_name} – {service_type}"
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = contact_email
 
-# ✉️ Client Reminder
-def send_email(client, service, due_date, status, to_email):
-    emoji = {
-        "Active": "✅",
-        "Expiring Soon": "⏳",
-        "Expired": "❌"
-    }.get(status, "📌")
+        # 📩 Email body
+        body = f"""👋 Hello {client_name},
 
-    subject = f"{emoji} Reminder: {service} for {client}"
-    body = f"""\
-Hello {client}, 👋
+This is a friendly reminder that your service ⤵️
+📌 Service: {service_type}
+📅 Due Date: {due_date}
+📊 Status: {status}
 
-🔔 This is a friendly reminder.
-
-🧾 Client: {client}  
-🛠️ Service: {service}  
-📅 Due Date: {due_date}  
-📌 Status: {emoji} {status}
-
-Please take action if needed.  
-This is an automated message from our renewal system.
+Please take necessary action to renew or reach out to our team if needed.
 
 Thanks,  
-Renewal Reminder Team 🤖
+Team Priyanga 💼
 """
+        msg.set_content(body)
 
-    try:
-        msg = MIMEText(body)
-        msg["Subject"] = subject
-        msg["From"] = EMAIL_SENDER
-        msg["To"] = to_email
+        # ✉️ Send email
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(SENDER_EMAIL, APP_PASSWORD)
+            smtp.send_message(msg)
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-            server.send_message(msg)
+        # 📝 Log email
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"{timestamp} | Sent to {client_name} ({contact_email}) | {service_type} | {status} | Due: {due_date}\n"
+        os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True)
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
+            log_file.write(log_entry)
 
-        print(f"✅ Email sent to {to_email}")
+        print(f"✅ Email sent to {client_name} ({contact_email})")
         return True
 
     except Exception as e:
-        print(f"❌ Failed to send to {to_email}: {e}")
+        print(f"❌ Failed to send email to {client_name}: {e}")
         return False
 
-# 📬 Daily Summary to Team
+# 📬 Send summary email to yourself or your team
 def send_summary(summary_text):
-    subject = "📊 Daily Client Renewal Summary"
     try:
-        msg = MIMEText(summary_text)
-        msg["Subject"] = subject
-        msg["From"] = EMAIL_SENDER
-        msg["To"] = TEAM_EMAIL
+        msg = EmailMessage()
+        msg['Subject'] = "📈 Daily Renewal Summary Report"
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = SUMMARY_RECEIVER
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-            server.send_message(msg)
+        msg.set_content(summary_text)
 
-        print(f"📨 Summary sent to {TEAM_EMAIL}")
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(SENDER_EMAIL, APP_PASSWORD)
+            smtp.send_message(msg)
+
+        print("📤 Daily summary sent successfully.")
         return True
 
     except Exception as e:
-        print(f"❌ Failed to send summary: {e}")
+        print(f"❌ Failed to send daily summary: {e}")
         return False
