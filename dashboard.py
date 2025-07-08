@@ -1,98 +1,70 @@
+# dashboard.py
+
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from config import GOOGLE_SHEET_CSV_URL
 
-# ✅ Google Sheet (export as CSV)
-sheet_url = "https://docs.google.com/spreadsheets/d/17_HyRiUA3UMSt6uOOS_vTa29YbeCIuSCbP6XjsuUdg8/export?format=csv"
-
-# Set page configuration
+# 🎨 Page Settings
 st.set_page_config(page_title="📊 Client Renewal Dashboard", layout="wide")
 
-# 🎨 Custom Styles
-st.markdown("""
-    <style>
-    body {
-        background-color: #191970;
-    }
-    .block-container {
-        padding: 2rem 2rem 2rem 2rem;
-        background-color: #212942 ;
-        border-radius: 15px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-    h1, h2, h3 {
-        color: #2c3e50;
-    }
-    .stMetricValue {
-        font-size: 28px !important;
-    }
-    .stMetricLabel {
-        color: #7f8c8d;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# 💡 Load data
+@st.cache_data
+def load_data():
+    return pd.read_csv(GOOGLE_SHEET_CSV_URL)
 
-# Load Data
-df = pd.read_csv(sheet_url)
+df = load_data()
 
-# Parse Date
-df["Renewal Due Date"] = pd.to_datetime(df["Renewal Due Date"], errors='coerce')
-today = pd.to_datetime(datetime.today().date())
+# 🧹 Clean and sort data
+df["Status"] = df["Status"].fillna("Unknown")
+df["Client Name"] = df["Client Name"].fillna("Unnamed Client")
+df["Service Type"] = df["Service Type"].fillna("Unknown")
 
-# Title
-st.title("🎯 Client Renewal Management Dashboard")
-st.markdown("📌 **Live Dashboard to Track Renewals, Status & Automation**")
+# 🎨 Sidebar Filters
+st.sidebar.header("🔍 Filter Options")
+statuses = sorted(df["Status"].dropna().unique().tolist())
+services = sorted(df["Service Type"].dropna().unique().tolist())
+clients = sorted(df["Client Name"].dropna().unique().tolist())
 
-# Sidebar Filters
-st.sidebar.header("🔍 Filter Clients")
-service_filter = st.sidebar.multiselect("💼 Service Type", options=df["Service Type"].dropna().unique())
-status_filter = st.sidebar.multiselect("📊 Status", options=df["Status"].dropna().unique())
+selected_status = st.sidebar.multiselect("📊 Status", statuses, default=statuses)
+selected_service = st.sidebar.multiselect("💼 Service Type", services)
+selected_client = st.sidebar.selectbox("👤 Select a Client", ["All"] + clients)
 
-# Apply filters
+# 🎯 Apply Filters
 filtered_df = df.copy()
-if service_filter:
-    filtered_df = filtered_df[filtered_df["Service Type"].isin(service_filter)]
-if status_filter:
-    filtered_df = filtered_df[filtered_df["Status"].isin(status_filter)]
 
-# Metrics
-active_count = df[df["Status"] == "Active"].shape[0]
-expiring_count = df[df["Status"] == "Expiring Soon"].shape[0]
-expired_count = df[df["Status"] == "Expired"].shape[0]
+if selected_status:
+    filtered_df = filtered_df[filtered_df["Status"].isin(selected_status)]
+if selected_service:
+    filtered_df = filtered_df[filtered_df["Service Type"].isin(selected_service)]
+if selected_client != "All":
+    filtered_df = filtered_df[filtered_df["Client Name"] == selected_client]
 
+# 🧮 Metrics Section
+st.title("📊 Client Renewal Dashboard")
+st.markdown("📌 Monitor client renewals and status from live Google Sheets data.")
+
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("✅ Active", df[df["Status"] == "Active"].shape[0])
+col2.metric("⏳ Expiring Soon", df[df["Status"] == "Expiring Soon"].shape[0])
+col3.metric("❌ Expired", df[df["Status"] == "Expired"].shape[0])
+col4.metric("🔁 Transformed", df[df["Status"] == "Transform"].shape[0])
+
+# 🧾 Selected Client Details
+if selected_client != "All":
+    st.subheader(f"📄 Detailed View for: `{selected_client}`")
+    client_df = df[df["Client Name"] == selected_client]
+    st.dataframe(client_df, use_container_width=True)
+
+# 📋 Filtered Table View
 st.markdown("---")
-st.subheader("📈 Subscription Status Overview")
-col1, col2, col3 = st.columns(3)
-col1.metric("✅ Active", active_count)
-col2.metric("⏳ Expiring Soon", expiring_count)
-col3.metric("❌ Expired", expired_count)
+st.subheader("📋 Filtered Client Records")
+st.dataframe(filtered_df.reset_index(drop=True), use_container_width=True)
 
-# Expandable Detailed Lists by Status
-st.markdown("---")
-st.subheader("🧾 View Clients by Status")
-
-with st.expander("✅ Active Clients"):
-    active_df = df[df["Status"] == "Active"][["Client Name", "Service Type", "Renewal Due Date", "Contact Email"]]
-    st.write(f"🔹 Total: {active_df.shape[0]}")
-    st.dataframe(active_df, use_container_width=True)
-
-with st.expander("⏳ Expiring Soon Clients"):
-    expiring_df = df[df["Status"] == "Expiring Soon"][["Client Name", "Service Type", "Renewal Due Date", "Contact Email"]]
-    st.write(f"🔸 Total: {expiring_df.shape[0]}")
-    st.dataframe(expiring_df, use_container_width=True)
-
-with st.expander("❌ Expired Clients"):
-    expired_df = df[df["Status"] == "Expired"][["Client Name", "Service Type", "Renewal Due Date", "Contact Email"]]
-    st.write(f"🔴 Total: {expired_df.shape[0]}")
-    st.dataframe(expired_df, use_container_width=True)
-
-# Full Filtered Table
-st.markdown("---")
-st.subheader("📋 Full Filtered Table View")
-st.dataframe(filtered_df, use_container_width=True)
-
-# Footer
-st.markdown("---")
-st.markdown("✅ *Auto-updates when Google Sheet is edited*")
-st.markdown("🔗 [Edit Google Sheet](https://docs.google.com/spreadsheets/d/17_HyRiUA3UMSt6uOOS_vTa29YbeCIuSCbP6XjsuUdg8/edit)")
-
+# ℹ️ Tips
+st.markdown("""
+---
+💡 **Tips**:
+- Use the sidebar filters to refine your view.
+- This dashboard reflects real-time Google Sheets data.
+- Selecting a client reveals their associated services.
+""")
