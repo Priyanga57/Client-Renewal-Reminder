@@ -1,16 +1,15 @@
 # config.py
 
-# 🔗 Public CSV URL of your Google Sheet (make sure it's published)
-GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1vEZ9w3nkncT4-cFhEyU7ogHk705sc_KhWgY2HiejLv8/export?format=csv"
+# 🔗 Google Sheet CSV export link (live data source)
+GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/17_HyRiUA3UMSt6uOOS_vTa29YbeCIuSCbP6XjsuUdg8/export?format=csv"
 
-# ⏳ Days before expiry to send 'Expiring Soon' reminder
+# 📧 Email Configuration (if you use email notifications)
+SENDER_EMAIL = "your_email@gmail.com"         # Replace with your Gmail ID
+APP_PASSWORD = "your_app_password"            # Use 16-digit app password (not Gmail password)
+SUMMARY_RECEIVER = "priyangaa7512@gmail.com"  # Internal recipient for daily summary
+
+# 📁 Logging
+LOG_FILE_PATH = "logs/reminder_log.txt"
+
+# 🕒 Renewal period before expiration (in days)
 EXPIRY_DAYS = 30
-
-# 📬 Your main email address to receive daily summaries
-ADMIN_EMAIL = "priyangaa7512@gmail.com"
-
-# 💌 Email config - Gmail SMTP
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-EMAIL_ADDRESS = "your_email@gmail.com"       # Replace with your Gmail
-EMAIL_PASSWORD = "your_app_password_here"    # Replace with your 16-di
